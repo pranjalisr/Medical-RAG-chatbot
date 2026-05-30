@@ -1,130 +1,192 @@
-# Build-a-Complete-Medical-Chatbot-with-LLMs-LangChain-Pinecone-Flask-AWS
+# 🩺 MediBot — RAG-Powered Medical Chatbot
 
-# How to run?
-### STEPS:
+A production-ready **Retrieval-Augmented Generation (RAG)** chatbot that answers medical questions grounded in trusted knowledge sources. Built with LangChain, Pinecone, OpenAI GPT-4o, Flask, and deployed via Docker + AWS CI/CD.
 
-Clone the repository
+> ⚠️ **Disclaimer:** This chatbot is for informational purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment.
+
+---
+
+## ✨ What Makes This Different
+
+- 🧠 **Structured system prompt** with safety guardrails — the model cites retrieved context and refuses to speculate beyond it
+- 📚 **Pluggable data sources** — swap in any PDF corpus (included: Gale Encyclopedia of Medicine)
+- 💬 **Custom chat UI** — clean, responsive interface with typing indicators and source attribution
+- 🔁 **Conversation memory** — maintains multi-turn context using LangChain's `ConversationBufferWindowMemory`
+- 🐳 **Dockerized + CI/CD** — GitHub Actions pipeline deploys to AWS EC2 via ECR
+
+---
+
+## 🏗️ Architecture
+
+```
+User Query
+    │
+    ▼
+Flask API (/get)
+    │
+    ▼
+LangChain RAG Chain
+    ├── HuggingFace Embeddings (sentence-transformers/all-MiniLM-L6-v2)
+    ├── Pinecone Vector Store (similarity search, top-k=5)
+    └── GPT-4o (with structured system prompt + safety instructions)
+    │
+    ▼
+Grounded Answer + Source Docs
+```
+
+---
+
+## 🚀 Quick Start
+
+### 1. Clone the repo
 
 ```bash
-git clonehttps://github.com/entbappy/Build-a-Complete-Medical-Chatbot-with-LLMs-LangChain-Pinecone-Flask-AWS.git
+git clone https://github.com/pranjalisr/RAG-chatbot.git
+cd RAG-chatbot
 ```
-### STEP 01- Create a conda environment after opening the repository
+
+### 2. Create a conda environment
 
 ```bash
 conda create -n medibot python=3.10 -y
-```
-
-```bash
 conda activate medibot
 ```
 
+### 3. Install dependencies
 
-### STEP 02- install the requirements
 ```bash
 pip install -r requirements.txt
 ```
 
+### 4. Set up environment variables
 
-### Create a `.env` file in the root directory and add your Pinecone & openai credentials as follows:
+Create a `.env` file in the project root:
 
-```ini
-PINECONE_API_KEY = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-OPENAI_API_KEY = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```env
+PINECONE_API_KEY=your_pinecone_api_key_here
+OPENAI_API_KEY=your_openai_api_key_here
 ```
 
+> Get your keys: [Pinecone](https://www.pinecone.io/) | [OpenAI](https://platform.openai.com/)
+
+### 5. Ingest your data into Pinecone
+
+Place your PDF(s) in the `data/` folder, then run:
 
 ```bash
-# run the following command to store embeddings to pinecone
 python store_index.py
 ```
 
+### 6. Run the app
+
 ```bash
-# Finally run the following command
 python app.py
 ```
 
-Now,
+Open [http://localhost:5001](http://localhost:5001)
+
+---
+
+## 🔌 Swapping the Data Source
+
+The chatbot is designed to work with **any PDF corpus**. To change the knowledge base:
+
+1. Replace or add PDFs to the `data/` folder
+2. Update `index_name` in `store_index.py` and `app.py` if needed
+3. Re-run `python store_index.py` to re-embed
+
+**Tested data sources:**
+- Gale Encyclopedia of Medicine (default)
+- WHO Clinical Guidelines PDFs
+- PubMed article exports
+- Custom internal documents
+
+---
+
+## 🧠 Prompt Engineering
+
+The system prompt is carefully structured to:
+
+1. **Ground answers in retrieved context** — the model is instructed to answer only from the provided documents
+2. **Acknowledge uncertainty** — if the context doesn't contain enough information, the model says so explicitly rather than hallucinating
+3. **Cite its source** — responses reference which part of the knowledge base the answer came from
+4. **Apply safety guardrails** — the model never recommends specific medications or dosages and always defers to a doctor
+
+See [`src/prompt.py`](src/prompt.py) for the full prompt template.
+
+---
+
+## 🐳 Docker
+
 ```bash
-open up localhost:
+docker build -t medibot .
+docker run -p 5001:5001 --env-file .env medibot
 ```
 
+---
 
-### Techstack Used:
+## ☁️ AWS Deployment (CI/CD via GitHub Actions)
 
-- Python
-- LangChain
-- Flask
-- GPT
-- Pinecone
+The `.github/workflows/` pipeline:
+1. Builds a Docker image
+2. Pushes it to Amazon ECR
+3. SSHs into an EC2 instance and pulls + runs the new image
 
+### Required GitHub Secrets
 
+| Secret | Description |
+|---|---|
+| `AWS_ACCESS_KEY_ID` | IAM user access key |
+| `AWS_SECRET_ACCESS_KEY` | IAM user secret |
+| `AWS_DEFAULT_REGION` | e.g. `us-east-1` |
+| `ECR_REPO` | Your ECR repository URI |
+| `PINECONE_API_KEY` | Pinecone API key |
+| `OPENAI_API_KEY` | OpenAI API key |
 
-# AWS-CICD-Deployment-with-Github-Actions
+### IAM Permissions Required
 
-## 1. Login to AWS console.
+- `AmazonEC2ContainerRegistryFullAccess`
+- `AmazonEC2FullAccess`
 
-## 2. Create IAM user for deployment
+---
 
-	#with specific access
+## 🗂️ Project Structure
 
-	1. EC2 access : It is virtual machine
+```
+RAG-chatbot/
+├── .github/workflows/      # CI/CD pipeline
+├── data/                   # PDF knowledge base
+├── research/               # Notebooks for experimentation
+├── src/
+│   ├── helper.py           # Embedding loader
+│   └── prompt.py           # System prompt + templates
+├── static/                 # CSS, JS, assets
+├── templates/
+│   └── chat.html           # Custom chat UI
+├── app.py                  # Flask app + RAG chain
+├── store_index.py          # PDF ingestion + Pinecone upsert
+├── Dockerfile
+└── requirements.txt
+```
 
-	2. ECR: Elastic Container registry to save your docker image in aws
+---
 
+## 🛠️ Tech Stack
 
-	#Description: About the deployment
+| Layer | Technology |
+|---|---|
+| LLM | OpenAI GPT-4o |
+| Orchestration | LangChain |
+| Vector DB | Pinecone |
+| Embeddings | HuggingFace `all-MiniLM-L6-v2` |
+| Backend | Flask |
+| Frontend | HTML/CSS/JS (custom UI) |
+| Containerisation | Docker |
+| Cloud | AWS EC2 + ECR |
+| CI/CD | GitHub Actions |
 
-	1. Build docker image of the source code
+---
 
-	2. Push your docker image to ECR
+## 📄 License
 
-	3. Launch Your EC2 
-
-	4. Pull Your image from ECR in EC2
-
-	5. Lauch your docker image in EC2
-
-	#Policy:
-
-	1. AmazonEC2ContainerRegistryFullAccess
-
-	2. AmazonEC2FullAccess
-
-	
-## 3. Create ECR repo to store/save docker image
-    - Save the URI: 315865595366.dkr.ecr.us-east-1.amazonaws.com/medicalbot
-
-	
-## 4. Create EC2 machine (Ubuntu) 
-
-## 5. Open EC2 and Install docker in EC2 Machine:
-	
-	
-	#optinal
-
-	sudo apt-get update -y
-
-	sudo apt-get upgrade
-	
-	#required
-
-	curl -fsSL https://get.docker.com -o get-docker.sh
-
-	sudo sh get-docker.sh
-
-	sudo usermod -aG docker ubuntu
-
-	newgrp docker
-	
-# 6. Configure EC2 as self-hosted runner:
-    setting>actions>runner>new self hosted runner> choose os> then run command one by one
-
-
-# 7. Setup github secrets:
-
-   - AWS_ACCESS_KEY_ID
-   - AWS_SECRET_ACCESS_KEY
-   - AWS_DEFAULT_REGION
-   - ECR_REPO
-   - PINECONE_API_KEY
-   - OPENAI_API_KEY
+[Apache 2.0](LICENSE)
