@@ -75,8 +75,8 @@ Grounded Answer + Source Citations
 ### 1. Clone the repo
 
 ```bash
-git clone https://github.com/pranjalisr/RAG-chatbot.git
-cd RAG-chatbot
+git clone https://github.com/pranjalisr/Medical-RAG-chatbot.git
+cd Medical-RAG-chatbot
 ```
 
 ### 2. Create environment
